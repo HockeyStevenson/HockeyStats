@@ -18,7 +18,7 @@ import plotly.graph_objs as go
 
 # Main content
 
-st.set_option('deprecation.showPyplotGlobalUse', False)
+#st.set_option('deprecation.showPyplotGlobalUse', False)
 
 #######################
 # Page configuration
