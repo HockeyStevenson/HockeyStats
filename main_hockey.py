@@ -32,8 +32,8 @@ st.set_page_config(
 
 
 # Load your data
-file_path = 'Stevenson_Hockey.xlsx'
-data = pd.ExcelFile(file_path)
+#file_path = 'Stevenson_Hockey.xlsx'
+data = pd.ExcelFile('Stevenson_Hockey.xlsx')
 
 
 # Load the sheets into separate DataFrames
