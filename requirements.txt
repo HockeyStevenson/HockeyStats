@@ -6,3 +6,6 @@ numpy
 matplotlib
 seaborn
 openpyxl
+tesseract-ocr
+opencv-python
+pytesseract
