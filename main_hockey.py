@@ -12,22 +12,45 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.graph_objs as go
+import base64
 
 
-
-
-# Main content
 
 #st.set_option('deprecation.showPyplotGlobalUse', False)
 
-#######################
+
+# Function to load an image and convert it to base64
+def get_image_base64(image_path):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode()
+
+# Image URL
+logo_url = "./stevenson_logo.png"
+
+# Get the base64 string of the image
+logo_base64 = get_image_base64(logo_url)
+
+
+
 # Page configuration
 st.set_page_config(
     page_title="Stevenson Hockey Dashboard",
+    page_icon=f"data:image/png;base64,{logo_base64}",
     layout="wide",
     initial_sidebar_state="expanded")
 
-#alt.themes.enable("green")
+
+
+# HTML and CSS for centering the image
+st.sidebar.markdown(
+    f"""
+    <div style="display: flex; justify-content: center;">
+        <img src="data:image/png;base64,{logo_base64}" width="100">
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 
 
 
@@ -47,7 +70,7 @@ shooting_df = pd.read_excel(data, sheet_name='Shooting')
 #######################
 # Sidebar
 with st.sidebar:
-    st.subheader('🏂 Stevenson Hockey Dashboard')
+    st.subheader('Stevenson Hockey Dashboard')
     
     team_list = list(roster_df.Team.unique())[::-1]
     
