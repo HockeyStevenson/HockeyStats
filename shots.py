@@ -9,7 +9,8 @@ import pandas as pd
 
 import base64
 
-
+# Access the GitHub token from the secrets file
+github_token = st.secrets["github"]["token"]
 
 # Placeholder for the data to be saved
 data_to_save = []
