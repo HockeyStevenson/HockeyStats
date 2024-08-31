@@ -115,10 +115,6 @@ def save_data_to_csv():
         st.success("Data saved successfully!")
 
 
-repo.update_file(file_path, commit_message, contents, content.sha)
-
-
-
 
 # Add a radio button for selecting the period, displayed horizontally
 period = st.radio("Select Period", options=["1", "2", "3", "Overtime"], horizontal=True)
