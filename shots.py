@@ -10,35 +10,6 @@ import pandas as pd
 import base64
 
 
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
-from oauth2client.service_account import ServiceAccountCredentials
-import json
-
-# Load credentials from Streamlit secrets
-credentials_json = st.secrets["google_drive"]["credentials"]
-credentials_dict = json.loads(credentials_json)
-
-# Authenticate using the credentials from secrets
-@st.experimental_singleton
-def authenticate_drive():
-    gauth = GoogleAuth()
-    
-    # Convert the credentials dictionary to a credentials object
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scopes=["https://www.googleapis.com/auth/drive"])
-
-    # Initialize and authorize GoogleAuth with the credentials object
-    gauth.credentials = creds
-    gauth.Authorize()
-    
-    drive = GoogleDrive(gauth)
-    return drive
-
-# The rest of your code
-
-
-
-
 
 # Placeholder for the data to be saved
 data_to_save = []
