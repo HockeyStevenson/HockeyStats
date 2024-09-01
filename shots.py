@@ -18,10 +18,10 @@ url = "https://docs.google.com/spreadsheets/d/1ZXsFO0JOGCdBImyyQDyuMAgUqgusb4xnh
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # Read data from the specific worksheet
-df = conn.read(
-    spreadsheet=url,
-    worksheet="shots"
-)
+#df = conn.read(
+#    spreadsheet=url,
+#    worksheet="shots"
+#)
 
 # Print results.
 #for row in df.itertuples():
