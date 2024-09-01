@@ -6,4 +6,4 @@ numpy
 matplotlib
 seaborn
 openpyxl
-PyGithub
+streamlit_gsheets
