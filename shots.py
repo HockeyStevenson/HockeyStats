@@ -17,7 +17,7 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 # Read data from the specific worksheet
 df = conn.read(
-    worksheet="shots",
+    worksheet="shots"
 )
 
 # Print results.
