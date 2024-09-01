@@ -21,8 +21,8 @@ df = conn.read(
 )
 
 # Print results.
-for row in df.itertuples():
-    st.write(f"On {row.GameDate} {row.Team} has a game with {row.Opponent}. {row.JerseyNumber} has a shot from {row.ShootZone}.")
+#for row in df.itertuples():
+#    st.write(f"On {row.GameDate} {row.Team} has a game with {row.Opponent}. {row.JerseyNumber} has a shot from {row.ShootZone}.")
 
 
 
