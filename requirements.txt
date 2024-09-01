@@ -7,3 +7,4 @@ matplotlib
 seaborn
 openpyxl
 git+https://github.com/streamlit/gsheets-connection
+st-gsheets-connection
