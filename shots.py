@@ -10,6 +10,18 @@ import pandas as pd
 import base64
 
 
+from streamlit_gsheets import GSheetsConnection
+
+# Create a connection object.
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+df = conn.read(
+    worksheet="shots",
+)
+
+# Print results.
+for row in df.itertuples():
+    st.write(f"On {row.GameDate} {row.Team} has a game with {row.Opponent}. {row.JerseyNumber} has a shot from {row.ShootZone}.")
 
 
 # Placeholder for the data to be saved
