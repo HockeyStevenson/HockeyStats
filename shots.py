@@ -12,11 +12,8 @@ import base64
 
 from streamlit_gsheets import GSheetsConnection
 
-# Specify your Google Sheets document by its URL or ID
-SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1ZXsFO0JOGCdBImyyQDyuMAgUqgusb4xnhSiZKHc7elw/edit?gid=0#gid=0"
-
 # Create a connection object.
-conn = st.connection("gsheets", type=GSheetsConnection, url=SPREADSHEET_URL)
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 # Read data from the specific worksheet
 df = conn.read(
