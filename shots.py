@@ -14,18 +14,6 @@ from streamlit_gsheets import GSheetsConnection
 
 url = "https://docs.google.com/spreadsheets/d/1ZXsFO0JOGCdBImyyQDyuMAgUqgusb4xnhSiZKHc7elw"
 
-# Create a connection object.
-conn = st.connection("gsheets", type=GSheetsConnection)
-
-# Read data from the specific worksheet
-#df = conn.read(
-#    spreadsheet=url,
-#    worksheet="shots"
-#)
-
-# Print results.
-#for row in df.itertuples():
-#    st.write(f"On {row.GameDate} {row.Team} has a game with {row.Opponent}. {row.JerseyNumber} has a shot from {row.ShootZone}.")
 
 
 
