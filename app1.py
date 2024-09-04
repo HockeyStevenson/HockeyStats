@@ -778,19 +778,23 @@ elif view_by == "Player":
     # Retrieving the JerseyNumber
     jersey_number = player_info['JerseyNumber'].values[0]  # Ensure there is at least one match before indexing
 
-    #st.write(team_players)  
-    #st.write(selected_player) 
+     
+    #st.dataframe(team_players.set_index('JerseyNumber'), width=650)
+    #st.write("selected_player",selected_player) 
     #st.write(jersey_number)  
-    
-    
     
     
     player_shots = final_shots_df[(final_shots_df['LastName'] + ", " + final_shots_df['FirstName']) == selected_player]
     player_scores = final_scoring_df[(final_scoring_df['LastName'] + ", " + final_scoring_df['FirstName']) == selected_player]
     player_penalties = final_penalties_df[(final_penalties_df['LastName'] + ", " + final_penalties_df['FirstName']) == selected_player]    
+
+         
+    #st.dataframe(player_shots.set_index('JerseyNumber'), width=650)
+    #st.dataframe(player_scores.set_index('JerseyNumber'), width=650)
+    #st.dataframe(player_penalties.set_index('JerseyNumber'), width=650)
+
     
-    
-    if player_shots.empty:
+    if player_shots.empty & player_scores.empty & player_penalties.empty:
             st.subheader(f"No Data for {selected_player}")
     else:
             st.subheader(f"Statistics for {selected_player}")
@@ -812,7 +816,9 @@ elif view_by == "Player":
             # Sort the scores in descending order
             score_counts_player = score_counts_player.sort_values(by='GameDate', ascending=False)
 
-
+            
+            assistants_counts_player = player_scores.groupby(['GameDate','Opponent','JerseyNumber']).size().reset_index(name='TotalAssistants')
+            assistants_counts_player = assistants_counts_player.sort_values(by='GameDate', ascending=False)
     
     
     
@@ -835,19 +841,21 @@ elif view_by == "Player":
             result = result.sort_values(by='GameDate', ascending=False)
         
         
-            total_shots = result['TotalShots'].sum()
             total_scores = result['TotalScores'].sum()
+            total_assistants = result['TotalAssistants'].sum()
+            total_shots = result['TotalShots'].sum()
             total_penalties = result['TotalPenalties'].sum()
             
             score_rate = (total_scores / total_shots) * 100 if total_shots > 0 else 0
         
             
             # Create columns for the summary stats
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3, col4, col5 = st.columns(4)
             col1.metric("Total Scores", int(total_scores))
-            col2.metric("Total Shots", int(total_shots))
-            col3.metric("Scoring Rate", f"{score_rate:.1f}%")
-            col4.metric("Total Penalties", int(total_penalties))
+            col2.metric("Total Assistants", int(total_assistants))
+            col3.metric("Total Shots", int(total_shots))
+            col4.metric("Scoring Rate", f"{score_rate:.1f}%")
+            col5.metric("Total Penalties", int(total_penalties))
             
             
             st.markdown("<hr>", unsafe_allow_html=True)
