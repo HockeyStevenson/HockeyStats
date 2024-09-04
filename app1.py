@@ -64,7 +64,7 @@ roster_df = pd.read_excel(data, sheet_name='Roster')
 scoring_df = pd.read_excel(data, sheet_name='Scoring')
 penalties_df = pd.read_excel(data, sheet_name='Penalties')
 shots_df = pd.read_excel(data, sheet_name='Shots')
-
+faceoff_df = pd.read_excel(data, sheet_name='Faceoff')
 
 
 #######################
@@ -182,10 +182,6 @@ final_shots_df.drop(columns=['FormattedDate'], inplace=True)
 
 
 
-
-
-
-
 # Add a horizontal line
 st.markdown("<hr>", unsafe_allow_html=True)
 #metric = st.radio("Metric", ["Shooting", "Penalties", "Game Outcomes"])
@@ -198,7 +194,6 @@ if view_by == "Team":
     
     #selected_team = st.sidebar.selectbox("Select Team", roster_df['Team'].unique())
     
-    #metric = st.radio("Metric", ["Shots", "Penalties", "Game Outcomes"])
     
     metric = st.radio("Metric", ["Game Outcomes", "Shots", "Penalties", "Faceoff"])
     
@@ -729,15 +724,43 @@ if view_by == "Team":
                 st.markdown("<hr>", unsafe_allow_html=True)
             
     if metric == "Faceoff":
+        #faceoff_outcomes = final_faceoff_df[final_faceoff_df['Team'] == selected_team]    
         
-        st.subheader(f"No Faceoff Data for {selected_team}")
- 
-        #faceoff_outcomes = final_faceoff_df[final_faceoff_df['Team'] == selected_team]
+        faceoff_stevenson = faceoff_df[faceoff_df['Team'] == selected_team]
+   
+        
+        if faceoff_stevenson.empty:
+                st.subheader(f"No Faceoff Data for {selected_team}")
+        else:    
+            
+            
+            
+                # Perform the merge for 'Stevenson' team
+                faceoff_merged_stevenson = pd.merge(
+                    faceoff_stevenson,
+                    roster_df[['Team', 'JerseyNumber', 'FirstName', 'LastName', 'Position']],
+                    how='left',
+                    left_on=['Team', 'JerseyNumber'],
+                    right_on=['Team', 'JerseyNumber']
+                )                  
 
-        #if faceoff_outcomes.empty:
-                #st.subheader(f"No Faceoff Data for {selected_team}")
-        #else:    
+
+                
+                summary = faceoff_merged_stevenson.groupby(['JerseyNumber', 'FirstName', 'LastName', 'Position']).agg(
+                    total_wins=('Win', 'sum'),
+                    total_losses=('Lose', 'sum')
+                ).reset_index()
+
+                # Calculating win rate
+                summary['win_rate'] = (summary['total_wins'] / (summary['total_wins'] + summary['total_losses'])) * 100
+                summary['win_rate'] = summary['win_rate'].round(1)  # rounding to one decimal
+                summary = summary.sort_values(by='win_rate', ascending=False).reset_index(drop=True)
+                
+                summary['win_rate'] = summary['win_rate'].astype(str) + '%'
+
+
                 # Calculate total unique games played
+                st.dataframe(summary.set_index('JerseyNumber'), width=650)
                 #total_faceoff = faceoff_outcomes[['GameDate', 'Team', 'Opponent']].drop_duplicates().shape[0]    
 
     
@@ -835,6 +858,7 @@ elif view_by == "Player":
         
     st.markdown("<hr>", unsafe_allow_html=True)
     
+
 
     
     
