@@ -817,8 +817,52 @@ elif view_by == "Player":
             score_counts_player = score_counts_player.sort_values(by='GameDate', ascending=False)
 
             
-            assistants_counts_player = player_scores.groupby(['GameDate','Opponent','JerseyNumber']).size().reset_index(name='TotalAssistants')
-            assistants_counts_player = assistants_counts_player.sort_values(by='GameDate', ascending=False)
+            # Jeff ####################
+            
+            
+            team_outcomes = final_scoring_df[final_scoring_df['Team'] == selected_team]
+            
+            # Selecting the required columns and filtering by 'ScoringTeam'
+            #assistants_player1 = team_outcomes[team_outcomes['ScoringTeam'] == 'Stevenson'][['GameDate', 'Team', 'Opponent', 'Assistant_1']]
+            
+            assistants_player1 = team_outcomes[
+    (team_outcomes['ScoringTeam'] == 'Stevenson') &
+    (team_outcomes['Assistant_1'] == jersey_number)
+][['GameDate', 'Team', 'Opponent', 'Assistant_1']]
+
+            # Renaming 'Assistant_1' to 'JerseyNumber'
+            assistants_player1 = assistants_player1.rename(columns={'Assistant_1': 'JerseyNumber'})
+                
+            # Selecting the required columns and filtering by 'ScoringTeam'
+            #assistants_player2 = team_outcomes[team_outcomes['ScoringTeam'] == 'Stevenson'][['GameDate', 'Team', 'Opponent', 'Assistant_2']]
+            
+            assistants_player2 = team_outcomes[
+    (team_outcomes['ScoringTeam'] == 'Stevenson') &
+    (team_outcomes['Assistant_1'] == jersey_number)
+][['GameDate', 'Team', 'Opponent', 'Assistant_2']]
+
+            # Renaming 'Assistant_1' to 'JerseyNumber'
+            assistants_player2 = assistants_player2.rename(columns={'Assistant_2': 'JerseyNumber'})                
+                
+      
+            assistants_player = pd.concat([assistants_player1, assistants_player2], axis=0)
+
+            # Reset the index after concatenation, if needed
+            assistants_player = assistants_player.reset_index(drop=True)
+            assistants_player = assistants_player.dropna(subset=['JerseyNumber'])
+                
+            
+            #st.dataframe(assistants_player.set_index('JerseyNumber'), width=600)
+            #st.write(assistants_player.columns)
+            
+            # Counting the number of records for each JerseyNumber
+            player_assistants_counts = assistants_player.groupby(['JerseyNumber', 'GameDate','Opponent']).size().reset_index(name='TotalAssistants')
+
+            
+            #st.dataframe(player_assistants_counts.set_index('JerseyNumber'), width=600)
+            
+    
+    
     
     
     
@@ -833,6 +877,7 @@ elif view_by == "Player":
             # Merge the DataFrames on 'JerseyNumber', 'GameDate', and 'Opponent', keeping all records
             result = score_counts_player.merge(shots_counts_player, on=['JerseyNumber', 'GameDate', 'Opponent'], how='outer')
             result = result.merge(penaltys_counts_player, on=['JerseyNumber', 'GameDate', 'Opponent'], how='outer')
+            result = result.merge(player_assistants_counts, on=['JerseyNumber', 'GameDate', 'Opponent'], how='outer')
 
             # Replace null values with 0
             result.fillna(0, inplace=True)
@@ -850,7 +895,7 @@ elif view_by == "Player":
         
             
             # Create columns for the summary stats
-            col1, col2, col3, col4, col5 = st.columns(4)
+            col1, col2, col3, col4, col5 = st.columns(5)
             col1.metric("Total Scores", int(total_scores))
             col2.metric("Total Assistants", int(total_assistants))
             col3.metric("Total Shots", int(total_shots))
@@ -861,7 +906,7 @@ elif view_by == "Player":
             st.markdown("<hr>", unsafe_allow_html=True)
             
         
-            st.dataframe(result.set_index('JerseyNumber'), width=650)
+            st.dataframe(result.set_index('JerseyNumber'), width=900)
       
         
     st.markdown("<hr>", unsafe_allow_html=True)
