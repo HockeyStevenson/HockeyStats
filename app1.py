@@ -196,7 +196,7 @@ if view_by == "Team":
     
     st.subheader("Hockey Data Analysis")
     
-    selected_team = st.sidebar.selectbox("Select Team", roster_df['Team'].unique())
+    #selected_team = st.sidebar.selectbox("Select Team", roster_df['Team'].unique())
     
     #metric = st.radio("Metric", ["Shots", "Penalties", "Game Outcomes"])
     
