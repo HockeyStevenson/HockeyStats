@@ -184,7 +184,7 @@ final_shots_df.drop(columns=['FormattedDate'], inplace=True)
 
 
 
-st.subheader("Hockey Data Analysis")
+
 
 # Add a horizontal line
 st.markdown("<hr>", unsafe_allow_html=True)
@@ -193,6 +193,9 @@ st.markdown("<hr>", unsafe_allow_html=True)
 
 
 if view_by == "Team":
+    
+    st.subheader("Hockey Data Analysis")
+    
     selected_team = st.sidebar.selectbox("Select Team", roster_df['Team'].unique())
     
     #metric = st.radio("Metric", ["Shots", "Penalties", "Game Outcomes"])
@@ -758,20 +761,18 @@ elif view_by == "Player":
     
     
     
-    metric = st.radio("Metric", ["Scores", "Shots", "Penalties"])
     
-    if metric == "Shots":
-        player_shots = final_shots_df[(final_shots_df['LastName'] + ", " + final_shots_df['FirstName']) == selected_player]
-        
-        
-        if player_shots.empty:
-            st.subheader(f"No Shots Data for {selected_player}")
-        else:
-            st.subheader(f"Shots Data for {selected_player}")
+    player_shots = final_shots_df[(final_shots_df['LastName'] + ", " + final_shots_df['FirstName']) == selected_player]
+    player_scores = final_scoring_df[(final_scoring_df['LastName'] + ", " + final_scoring_df['FirstName']) == selected_player]
+    player_penalties = final_penalties_df[(final_penalties_df['LastName'] + ", " + final_penalties_df['FirstName']) == selected_player]    
+    
+    
+    if player_shots.empty:
+            st.subheader(f"No Data for {selected_player}")
+    else:
+            st.subheader(f"Statistics for {selected_player}")
             
             #st.dataframe(player_shots, width=650)
-            
-            
             shots_counts_player = player_shots.groupby(['GameDate','Opponent','JerseyNumber']).size().reset_index(name='TotalShots')
             
             
@@ -779,29 +780,9 @@ elif view_by == "Player":
             shots_counts_player = shots_counts_player.sort_values(by='GameDate', ascending=False)
 
 
-            #st.subheader("Sorted Penalties by Player for Stevenson")
-            st.dataframe(shots_counts_player.set_index('JerseyNumber'), width=650)
-                
-            # Add a horizontal line
-            st.markdown("<hr>", unsafe_allow_html=True)
-       
-        
-        
-    elif metric == "Scores":     
-
-        player_scores = final_scoring_df[(final_scoring_df['LastName'] + ", " + final_scoring_df['FirstName']) == selected_player]
-        
-
-        #st.dataframe(final_scoring_df, width=650)
-        
-        if player_scores.empty:
-            st.subheader(f"No Scores Data for {selected_player}")
-        else:
-            st.subheader(f"Scores Data for {selected_player}")
-            
-            #st.dataframe(player_scores, width=650)
-            
-            
+  
+    
+    
             score_counts_player = player_scores.groupby(['GameDate','Opponent','JerseyNumber']).size().reset_index(name='TotalScores')
             
             
@@ -809,46 +790,54 @@ elif view_by == "Player":
             score_counts_player = score_counts_player.sort_values(by='GameDate', ascending=False)
 
 
-            #st.subheader("Sorted Penalties by Player for Stevenson")
-            st.dataframe(score_counts_player.set_index('JerseyNumber'), width=650)
-                
-            # Add a horizontal line
-            st.markdown("<hr>", unsafe_allow_html=True)        
-      
     
-        
-    elif metric == "Penalties":
-        player_penalties = final_penalties_df[(final_penalties_df['LastName'] + ", " + final_penalties_df['FirstName']) == selected_player]
-        
-        #st.subheader(f"Penalties for {selected_player}")
-        #penalties = player_penalties.groupby('Period')['PenaltyMins'].sum()
-        #st.bar_chart(penalties)
-
-
-        #st.dataframe(player_penalties, width=650)
-        
-        if player_penalties.empty:
-            st.subheader(f"No Penalties Data for {selected_player}")
-        else:
-            st.subheader(f"Penalties Data for {selected_player}")
-            
-            #st.dataframe(player_scores, width=650)
-            
-            
+    
+    
             penaltys_counts_player = player_penalties.groupby(['GameDate','Opponent','JerseyNumber']).size().reset_index(name='TotalPenalties')
             
             
             # Sort the scores in descending order
             penaltys_counts_player = penaltys_counts_player.sort_values(by='GameDate', ascending=False)
 
+    
+    
+            # Merge the DataFrames on 'JerseyNumber', 'GameDate', and 'Opponent', keeping all records
+            result = score_counts_player.merge(shots_counts_player, on=['JerseyNumber', 'GameDate', 'Opponent'], how='outer')
+            result = result.merge(penaltys_counts_player, on=['JerseyNumber', 'GameDate', 'Opponent'], how='outer')
 
-            #st.subheader("Sorted Penalties by Player for Stevenson")
-            st.dataframe(penaltys_counts_player.set_index('JerseyNumber'), width=650)
-                
-            # Add a horizontal line
-            st.markdown("<hr>", unsafe_allow_html=True)        
+            # Replace null values with 0
+            result.fillna(0, inplace=True)
+
+    
+            result = result.sort_values(by='GameDate', ascending=False)
         
         
+            total_shots = result['TotalShots'].sum()
+            total_scores = result['TotalScores'].sum()
+            total_penalties = result['TotalPenalties'].sum()
+            
+            score_rate = (total_scores / total_shots) * 100 if total_shots > 0 else 0
+        
+            
+            # Create columns for the summary stats
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Total Scores", int(total_scores))
+            col2.metric("Total Shots", int(total_shots))
+            col3.metric("Scoring Rate", f"{score_rate:.1f}%")
+            col4.metric("Total Penalties", int(total_penalties))
+            
+            
+            st.markdown("<hr>", unsafe_allow_html=True)
+            
+        
+            st.dataframe(result.set_index('JerseyNumber'), width=650)
+      
+        
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+
+    
+    
 
 elif view_by == "Game":
     
