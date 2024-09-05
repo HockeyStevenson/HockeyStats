@@ -190,9 +190,33 @@ st.markdown("<hr>", unsafe_allow_html=True)
 
 if view_by == "Team":
     
-    st.subheader("Hockey Data Analysis")
+    #st.subheader("Hockey Data Analysis")
     
-    #selected_team = st.sidebar.selectbox("Select Team", roster_df['Team'].unique())
+    # Jeff ####################
+    
+    team_outcomes = final_scoring_df[final_scoring_df['Team'] == selected_team]
+    
+    # Add "All" as an option in the dropdown
+    opponent_options = ["All"] + list(team_outcomes['Opponent'].unique())
+
+    # Create the selectbox with "All" as the default value
+    selected_opponent = st.sidebar.selectbox("Select Opponent", opponent_options, index=0)
+    
+    
+    if selected_opponent != "All":
+        st.subheader(f"Hockey Data Analysis: Stevenson vs. {selected_opponent}") 
+    else:
+        st.subheader("Hockey Data Analysis: Stevenson")
+    
+    
+
+    # Filter the data if a specific opponent is selected (i.e., not "All")
+    #if selected_opponent != "All":
+        #filtered_data = team_outcomes[team_outcomes['Opponent'] == selected_opponent]
+    #else:
+        #filtered_data = team_outcomes
+    
+    #st.write(selected_opponent)
     
     
     metric = st.radio("Metric", ["Game Outcomes", "Shots", "Penalties", "Faceoff"])
@@ -202,13 +226,24 @@ if view_by == "Team":
     
     if metric == "Game Outcomes":
  
-        team_outcomes = final_scoring_df[final_scoring_df['Team'] == selected_team]
+        temp_team_outcomes = final_scoring_df[final_scoring_df['Team'] == selected_team]
 
+        if selected_opponent != "All":
+                team_outcomes = temp_team_outcomes[temp_team_outcomes['Opponent'] == selected_opponent]
+        else:
+                team_outcomes = temp_team_outcomes   
+    
+    
+    
+    
         if team_outcomes.empty:
-                st.subheader(f"No Game Data for {selected_team}")
+                st.subheader(f"No Game Data for {selected_team} against {selected_opponent}")
         else:    
                 # Calculate total unique games played
                 total_games = team_outcomes[['GameDate', 'Team', 'Opponent']].drop_duplicates().shape[0]
+                
+
+
                 
                 #st.dataframe(team_outcomes)
              
@@ -409,16 +444,30 @@ if view_by == "Team":
             
     
     if metric == "Shots":   
-        team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]
+        temp_team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]
 
+
+        if selected_opponent != "All":
+                team_outcomes = temp_team_shooting[temp_team_shooting['Opponent'] == selected_opponent]
+                team_scoring = final_shots_df[(final_shots_df['Team'] == selected_team) & (final_shots_df['Opponent'] == selected_opponent)]
+                team_shooting = final_shots_df[(final_shots_df['Team'] == selected_team) & (final_shots_df['Opponent'] == selected_opponent)]
+
+                
+        else:
+                team_outcomes = temp_team_shooting   
+                team_scoring = final_scoring_df[final_scoring_df['Team'] == selected_team]
+                team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]            
+        
+        
+        
         if team_shooting.empty:
                 st.subheader(f"No Shooting Data for {selected_team}")
         else:
 
 
                 # Filter the data for the selected team
-                team_scoring = final_scoring_df[final_scoring_df['Team'] == selected_team]
-                team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]
+                #team_scoring = final_scoring_df[final_scoring_df['Team'] == selected_team]
+                #team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]
                 
                 #st.dataframe(team_shooting)
                 
@@ -604,9 +653,19 @@ if view_by == "Team":
     
     
     if metric == "Penalties":      
-        team_penalties = final_penalties_df[final_penalties_df['Team'] == selected_team]
+        
+        if selected_opponent != "All":
+                team_penalties = final_penalties_df[(final_penalties_df['Team'] == selected_team) & (final_penalties_df['Opponent'] == selected_opponent)]
+                opponent_penalties = final_penalties_df[(final_penalties_df['Team'] == selected_team) & (final_penalties_df['Opponent'] == selected_opponent)]
 
-
+                
+        else:
+                temp_team_penalties = final_penalties_df[final_penalties_df['Team'] == selected_team]  
+                team_penalties = final_penalties_df[final_penalties_df['Team'] == selected_team]
+                opponent_penalties = final_penalties_df[final_penalties_df['Opponent'] == selected_team]          
+        
+      
+        
         if team_penalties.empty:
                 st.subheader(f"No Penalties Data for {selected_team}")
         else:
@@ -614,8 +673,8 @@ if view_by == "Team":
                 # Assuming 'final_penalties_df' is your DataFrame containing the penalties data
 
                 # Filter the data for the selected team and opponents
-                team_penalties = final_penalties_df[final_penalties_df['Team'] == selected_team]
-                opponent_penalties = final_penalties_df[final_penalties_df['Opponent'] == selected_team]
+                #team_penalties = final_penalties_df[final_penalties_df['Team'] == selected_team]
+                #opponent_penalties = final_penalties_df[final_penalties_df['Opponent'] == selected_team]
 
                 # Dropdown menu for selecting the view type
                 view_type = st.selectbox("View by", ["Total", "By Game"])
@@ -723,11 +782,21 @@ if view_by == "Team":
                 # Add a horizontal line
                 st.markdown("<hr>", unsafe_allow_html=True)
             
+            
+            
     if metric == "Faceoff":
         #faceoff_outcomes = final_faceoff_df[final_faceoff_df['Team'] == selected_team]    
         
-        faceoff_stevenson = faceoff_df[faceoff_df['Team'] == selected_team]
-   
+        if selected_opponent != "All":
+                faceoff_stevenson = faceoff_df[(faceoff_df['Team'] == selected_team) & (faceoff_df['Opponent'] == selected_opponent)]
+                
+        else:
+                faceoff_stevenson = faceoff_df[faceoff_df['Team'] == selected_team]
+        
+
+        
+        #st.dataframe(faceoff_stevenson.set_index('JerseyNumber'), width=650)
+        
         
         if faceoff_stevenson.empty:
                 st.subheader(f"No Faceoff Data for {selected_team}")
@@ -744,12 +813,19 @@ if view_by == "Team":
                     right_on=['Team', 'JerseyNumber']
                 )                  
 
+                
+                
+                #st.dataframe(faceoff_merged_stevenson.set_index('JerseyNumber'), width=650)
 
                 
                 summary = faceoff_merged_stevenson.groupby(['JerseyNumber', 'FirstName', 'LastName', 'Position']).agg(
                     total_wins=('Win', 'sum'),
                     total_losses=('Lose', 'sum')
                 ).reset_index()
+                
+                
+                #st.dataframe(summary.set_index('JerseyNumber'), width=650)
+                
 
                 # Calculating win rate
                 summary['win_rate'] = (summary['total_wins'] / (summary['total_wins'] + summary['total_losses'])) * 100
@@ -817,7 +893,7 @@ elif view_by == "Player":
             score_counts_player = score_counts_player.sort_values(by='GameDate', ascending=False)
 
             
-            # Jeff ####################
+           
             
             
             team_outcomes = final_scoring_df[final_scoring_df['Team'] == selected_team]
