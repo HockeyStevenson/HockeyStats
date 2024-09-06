@@ -300,11 +300,19 @@ st.markdown("<hr>", unsafe_allow_html=True)
             
 # Add a "SAVE" button to save the data
 if st.button("SAVE"):
-    # Call the function to append data and upload back to S3
-    #st.dataframe(data_to_save, width=650)
-    
-    append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, data_to_save)
-    #save_data_to_csv()
+    # Check if data_to_save is empty
+    if not data_to_save:
+        st.warning("No data to save. Please add data before saving.")
+    else:
+        try:
+            # Call the function to append data and upload back to S3
+            append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, data_to_save)
+            
+            # Display success message
+            st.success("Data successfully uploaded!")
 
+        except Exception as e:
+            # Display error message if something goes wrong
+            st.error(f"An error occurred while uploading the data: {e}")
 
 
