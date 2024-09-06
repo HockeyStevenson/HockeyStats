@@ -13,10 +13,23 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.graph_objs as go
 import base64
-
+import boto3
+from io import BytesIO
+from openpyxl import load_workbook
 
 
 #st.set_option('deprecation.showPyplotGlobalUse', False)
+# Use the Access Key and Secret Key you just created
+
+AWS_ACCESS_KEY = st.secrets["aws"]["AWS_ACCESS_KEY"]
+AWS_SECRET_KEY = st.secrets["aws"]["AWS_SECRET_KEY"]
+
+S3_BUCKET = 'stevensonhockeydata'
+EXCEL_FILE_KEY = 'Stevenson_Hockey.xlsx' 
+
+# Create an S3 client
+s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
+
 
 
 # Function to load an image and convert it to base64
@@ -52,22 +65,42 @@ st.sidebar.markdown(
 )
 
 
+###############################################################
 
-
-# Load your data
-#file_path = 'Stevenson_Hockey.xlsx'
-data = pd.ExcelFile('Stevenson_Hockey.xlsx')
+# Load data
+#data = pd.ExcelFile('Stevenson_Hockey.xlsx')
 
 
 # Load the sheets into separate DataFrames
-roster_df = pd.read_excel(data, sheet_name='Roster')
-scoring_df = pd.read_excel(data, sheet_name='Scoring')
-penalties_df = pd.read_excel(data, sheet_name='Penalties')
-shots_df = pd.read_excel(data, sheet_name='Shots')
-faceoff_df = pd.read_excel(data, sheet_name='Faceoff')
+#roster_df = pd.read_excel(data, sheet_name='Roster')
+#scoring_df = pd.read_excel(data, sheet_name='Scoring')
+#penalties_df = pd.read_excel(data, sheet_name='Penalties')
+#shots_df = pd.read_excel(data, sheet_name='Shots')
+#faceoff_df = pd.read_excel(data, sheet_name='Faceoff')
 
 
-#######################
+###############################################################
+
+
+def read_excel_from_s3(bucket, file_key, sheet_name):
+    # Get the object from S3
+    obj = s3.get_object(Bucket=bucket, Key=file_key)
+    
+    # Read the content of the file into a Pandas DataFrame
+    excel_data = obj['Body'].read()
+    df = pd.read_excel(BytesIO(excel_data), sheet_name=sheet_name)
+    
+    return df
+
+# Read the "roster" worksheet from the Excel file
+roster_df = read_excel_from_s3(S3_BUCKET, EXCEL_FILE_KEY, sheet_name="Roster")
+scoring_df = read_excel_from_s3(S3_BUCKET, EXCEL_FILE_KEY, sheet_name="Scoring")
+penalties_df = read_excel_from_s3(S3_BUCKET, EXCEL_FILE_KEY, sheet_name="Penalties")
+shots_df = read_excel_from_s3(S3_BUCKET, EXCEL_FILE_KEY, sheet_name="Shots")
+faceoff_df = read_excel_from_s3(S3_BUCKET, EXCEL_FILE_KEY, sheet_name="Faceoff")
+
+
+
 # Sidebar
 with st.sidebar:
     st.subheader('Stevenson Hockey Dashboard')
@@ -191,8 +224,6 @@ st.markdown("<hr>", unsafe_allow_html=True)
 if view_by == "Team":
     
     #st.subheader("Hockey Data Analysis")
-    
-    # Jeff ####################
     
     team_outcomes = final_scoring_df[final_scoring_df['Team'] == selected_team]
     
