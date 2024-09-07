@@ -307,6 +307,39 @@ if st.button("SAVE"):
         try:
             # Call the function to append data and upload back to S3
             append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, data_to_save)
+
+
+            
+            
+            # Assuming df is currently a list
+            if isinstance(data_to_save, list):
+                # Case 1: List of lists
+                if all(isinstance(i, list) for i in data_to_save):
+                    # Convert list of lists into DataFrame
+                    data_to_save = pd.DataFrame(data_to_save, columns=['GameDate', 'Team', 'Opponent','Period','JerseyNumber','ShootingTeam','ShootZone'])  # Adjust column names as needed
+
+                # Case 2: List of dictionaries
+                elif all(isinstance(i, dict) for i in data_to_save):
+                    # Convert list of dictionaries into DataFrame
+                    data_to_save = pd.DataFrame(data_to_save)
+
+
+            #write backup file:
+            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            file_name = f"temp/{selected_team}_{current_time}.csv"
+
+            # Convert DataFrame to CSV in memory
+            csv_buffer = BytesIO()
+            data_to_save.to_csv(csv_buffer, index=False)
+            
+            csv_buffer.seek(0)
+
+            # Upload the CSV file to S3
+            s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
+            
+
+
+
             
             # Display success message
             st.success("Data successfully uploaded!")
