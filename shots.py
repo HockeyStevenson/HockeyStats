@@ -14,6 +14,7 @@ from io import BytesIO
 from openpyxl import load_workbook
 
 # Use the Access Key and Secret Key you just created
+
 AWS_ACCESS_KEY = st.secrets["aws"]["AWS_ACCESS_KEY"]
 AWS_SECRET_KEY = st.secrets["aws"]["AWS_SECRET_KEY"]
 
@@ -23,6 +24,21 @@ EXCEL_FILE_KEY = 'Stevenson_Hockey.xlsx'
 
 # Create an S3 client
 s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
+
+
+
+def read_excel_from_s3(bucket, file_key, sheet_name):
+    # Get the object from S3
+    obj = s3.get_object(Bucket=bucket, Key=file_key)
+    
+    # Read the content of the file into a Pandas DataFrame
+    excel_data = obj['Body'].read()
+    df = pd.read_excel(BytesIO(excel_data), sheet_name=sheet_name)
+    
+    return df
+
+
+roster_df = read_excel_from_s3(S3_BUCKET, EXCEL_FILE_KEY, sheet_name="Roster")
 
 
 
@@ -36,7 +52,8 @@ import pandas as pd
 from io import BytesIO
 from openpyxl import load_workbook
 
-def append_to_excel_s3(bucket, file_key, data_to_save, sheet_name="Shots"):
+#def append_to_excel_s3(bucket, file_key, data_to_save, sheet_name="Shots"):
+def append_to_excel_s3(bucket, file_key, data_to_save, sheet_name):
     # Convert the incoming data (likely a list) to a DataFrame
     df_new = pd.DataFrame(data_to_save)
 
@@ -116,7 +133,7 @@ def append_to_excel_s3(bucket, file_key, data_to_save, sheet_name="Shots"):
         
 # Placeholder for the data to be saved
 data_to_save = []
-
+faceoff_to_s3 = []
 
 #st.set_option('deprecation.showPyplotGlobalUse', False)
 
@@ -158,11 +175,11 @@ st.sidebar.markdown(
 
 # Load your data
 #file_path = 'Stevenson_Hockey.xlsx'
-data = pd.ExcelFile('Stevenson_Hockey.xlsx')
+#data = pd.ExcelFile('Stevenson_Hockey.xlsx')
 
 
 # Load the sheets into separate DataFrames
-roster_df = pd.read_excel(data, sheet_name='Roster')
+#roster_df = pd.read_excel(data, sheet_name='Roster')
 
 #######################
 
@@ -297,55 +314,153 @@ with col2:
 st.markdown("<hr>", unsafe_allow_html=True)  
 
 
+st.title("Hockey Game Faceoff Input")
+
+# Add a radio button for selecting the period, displayed horizontally
+period_faceoff = st.radio("Select Period", options=["1", "2", "3", "Overtime"], horizontal=True, key="period_faceoff")
+stevenson_faceoff = st.slider(f"Number of faceoff by Stevenson in Period {period_faceoff}", min_value=0, max_value=30, value=0)
+
+if stevenson_faceoff > 0:
+    st.subheader(f"Stevenson Faceoff Details for Period {period_faceoff}")
+    for i in range(stevenson_faceoff):
+        # Define 3 columns, with equal or customizable widths
+        cols = st.columns(3)  # Now, cols[0], cols[1], and cols[2] are valid
+        
+        with cols[0]:
+            jersey_number = st.selectbox(f"Jersey Number (faceoff {i+1})", unique_jersey_numbers, key=f"faceoff_jersey_{i}")
+        
+        with cols[1]:
+            user_input = st.text_input("Enter win count", key=f"numeric_input_{i}")
+
+            # Initialize win_count as None
+            win_count = None
+
+            # Validate if the input is a number
+            if user_input:
+                if user_input.isdigit():
+                    win_count = int(user_input)  # Convert the input to an integer and store in win_count
+                else:
+                    st.error("Please enter only numbers.")
+        
+        with cols[2]:
+            lose_input = st.text_input("Enter lose count", key=f"numeric_lose_input_{i}")
+
+            # Initialize lose_count as None
+            lose_count = None
+
+            # Validate if the input is a number
+            if lose_input:
+                if lose_input.isdigit():
+                    lose_count = int(lose_input)  # Convert the input to an integer and store in lose_count
+                else:
+                    st.error("Please enter only numbers.")
+
+        # Append the data to data_to_save
+        faceoff_to_s3.append({  
+            "GameDate": game_date.strftime('%Y-%m-%d'),
+            "Team": selected_team,
+            "Opponent": opponent,
+            "Period": period_faceoff, 
+            "JerseyNumber": jersey_number,               
+            "Win": win_count,
+            "Lose": lose_count
+        })
+
+
+
+st.markdown("<hr>", unsafe_allow_html=True)  
+
+
+
             
 # Add a "SAVE" button to save the data
 if st.button("SAVE"):
-    # Check if data_to_save is empty
-    if not data_to_save:
+    if not data_to_save and not faceoff_to_s3:
         st.warning("No data to save. Please add data before saving.")
     else:
-        try:
-            # Call the function to append data and upload back to S3
-            append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, data_to_save)
+            # Check if data_to_save is not empty, and write it to storage (or process it)
+            if data_to_save:
+                try:
+                    # Call the function to append data and upload back to S3
+                    append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, data_to_save, "Shots")
 
 
-            
-            
-            # Assuming df is currently a list
-            if isinstance(data_to_save, list):
-                # Case 1: List of lists
-                if all(isinstance(i, list) for i in data_to_save):
-                    # Convert list of lists into DataFrame
-                    data_to_save = pd.DataFrame(data_to_save, columns=['GameDate', 'Team', 'Opponent','Period','JerseyNumber','ShootingTeam','ShootZone'])  # Adjust column names as needed
+                    # Assuming df is currently a list
+                    if isinstance(data_to_save, list):
+                        # Case 1: List of lists
+                        if all(isinstance(i, list) for i in data_to_save):
+                            # Convert list of lists into DataFrame
+                            data_to_save = pd.DataFrame(data_to_save, columns=['GameDate', 'Team', 'Opponent','Period','JerseyNumber','ShootingTeam','ShootZone'])  # Adjust column names as needed
 
-                # Case 2: List of dictionaries
-                elif all(isinstance(i, dict) for i in data_to_save):
-                    # Convert list of dictionaries into DataFrame
-                    data_to_save = pd.DataFrame(data_to_save)
+                        # Case 2: List of dictionaries
+                        elif all(isinstance(i, dict) for i in data_to_save):
+                            # Convert list of dictionaries into DataFrame
+                            data_to_save = pd.DataFrame(data_to_save)
 
 
-            #write backup file:
-            current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            file_name = f"temp/{selected_team}_{current_time}.csv"
+                    #write backup file:
+                    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    file_name = f"temp/shots_{selected_team}_{current_time}.csv"
 
-            # Convert DataFrame to CSV in memory
-            csv_buffer = BytesIO()
-            data_to_save.to_csv(csv_buffer, index=False)
-            
-            csv_buffer.seek(0)
+                    # Convert DataFrame to CSV in memory
+                    csv_buffer = BytesIO()
+                    data_to_save.to_csv(csv_buffer, index=False)
 
-            # Upload the CSV file to S3
-            s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
-            
+                    csv_buffer.seek(0)
+
+                    # Upload the CSV file to S3
+                    s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
 
 
 
-            
-            # Display success message
-            st.success("Data successfully uploaded!")
+                    # Display success message
+                    st.success("Shots data successfully uploaded!")
 
-        except Exception as e:
-            # Display error message if something goes wrong
-            st.error(f"An error occurred while uploading the data: {e}")
+                except Exception as e:
+                    # Display error message if something goes wrong
+                    st.error(f"An error occurred while uploading the shots data: {e}")                
 
 
+                    
+            # Check if faceoff_to_s3 is not empty, and write it to storage (or process it)
+            if faceoff_to_s3:
+                try:
+                    # Call the function to append data and upload back to S3
+                    append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, faceoff_to_s3, "Faceoff")
+
+
+                    # Assuming df is currently a list
+                    if isinstance(faceoff_to_s3, list):
+                        # Case 1: List of lists
+                        if all(isinstance(i, list) for i in faceoff_to_s3):
+                            # Convert list of lists into DataFrame
+                            faceoff_to_s3 = pd.DataFrame(faceoff_to_s3, columns=['GameDate', 'Team', 'Opponent','Period','JerseyNumber','Win','Lose'])  # Adjust column names as needed
+
+                        # Case 2: List of dictionaries
+                        elif all(isinstance(i, dict) for i in faceoff_to_s3):
+                            # Convert list of dictionaries into DataFrame
+                            faceoff_to_s3 = pd.DataFrame(faceoff_to_s3)
+
+
+                    #write backup file:
+                    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    file_name = f"temp/faceoff_{selected_team}_{current_time}.csv"
+
+                    # Convert DataFrame to CSV in memory
+                    csv_buffer = BytesIO()
+                    faceoff_to_s3.to_csv(csv_buffer, index=False)
+
+                    csv_buffer.seek(0)
+
+                    # Upload the CSV file to S3
+                    s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
+
+
+
+                    # Display success message
+                    st.success("Faceoff data successfully uploaded!")
+
+                except Exception as e:
+                    # Display error message if something goes wrong
+                    st.error(f"An error occurred while uploading the faceoff data: {e}")                
+ 
