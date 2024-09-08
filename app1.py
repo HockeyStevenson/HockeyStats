@@ -227,8 +227,26 @@ if view_by == "Team":
     
     team_outcomes = final_scoring_df[final_scoring_df['Team'] == selected_team]
     
+    opponents_scoring = final_scoring_df[final_scoring_df['Team'] == selected_team]['Opponent']
+    opponents_shots = final_shots_df[final_shots_df['Team'] == selected_team]['Opponent']
+    opponents_penalties = final_penalties_df[final_penalties_df['Team'] == selected_team]['Opponent']
+    opponents_faceoff = faceoff_df[faceoff_df['Team'] == selected_team]['Opponent']
+
+
+    # Combine all 'Opponent' columns into one DataFrame
+    combined_opponents = pd.concat([opponents_scoring, opponents_shots, opponents_penalties, opponents_faceoff])
+
+    # Drop duplicates to retain only unique values
+    unique_opponents = combined_opponents.drop_duplicates().reset_index(drop=True)
+
+    # Create a new DataFrame from the unique opponents
+    unique_opponents_df = pd.DataFrame(unique_opponents, columns=['Opponent'])
+
+   
+    
+    
     # Add "All" as an option in the dropdown
-    opponent_options = ["All"] + list(team_outcomes['Opponent'].unique())
+    opponent_options = ["All"] + list(unique_opponents_df['Opponent'].unique())
 
     # Create the selectbox with "All" as the default value
     selected_opponent = st.sidebar.selectbox("Select Opponent", opponent_options, index=0)
