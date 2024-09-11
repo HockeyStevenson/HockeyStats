@@ -18,9 +18,10 @@ from openpyxl import load_workbook
 AWS_ACCESS_KEY = st.secrets["aws"]["AWS_ACCESS_KEY"]
 AWS_SECRET_KEY = st.secrets["aws"]["AWS_SECRET_KEY"]
 
-
 S3_BUCKET = 'stevensonhockeydata'
 EXCEL_FILE_KEY = 'Stevenson_Hockey.xlsx' 
+#EXCEL_FILE_KEY = 'Stevenson_Hockey_Testing.xlsx' 
+
 
 # Create an S3 client
 s3 = boto3.client('s3', aws_access_key_id=AWS_ACCESS_KEY, aws_secret_access_key=AWS_SECRET_KEY)
@@ -134,6 +135,8 @@ def append_to_excel_s3(bucket, file_key, data_to_save, sheet_name):
 # Placeholder for the data to be saved
 data_to_save = []
 faceoff_to_s3 = []
+scores_to_s3 = []
+goalie_to_s3 = []
 
 #st.set_option('deprecation.showPyplotGlobalUse', False)
 
@@ -186,7 +189,7 @@ st.sidebar.markdown(
 
 # Sidebar
 with st.sidebar:
-    st.subheader('Stevenson Hockey Shots Data')
+    st.subheader('Stevenson Hockey Game Data')
     
     # Select team from roster
     team_list = list(roster_df.Team.unique())[::-1]
@@ -196,7 +199,7 @@ with st.sidebar:
     df_selected_team = roster_df[roster_df.Team == selected_team]
     df_selected_team_sorted = df_selected_team.sort_values(by="JerseyNumber", ascending=False)
     unique_jersey_numbers = sorted(df_selected_team_sorted['JerseyNumber'].unique())
-
+    unique_jersey_numbers = [None] + unique_jersey_numbers 
 
     # Add the option to add a new opponent
     opponents = ["Carmel","Fenwick","Glenbrook North","Glenbrook South","Lake Forest","Loyola","New Trier", "St. Ignatius", "St. Viator","York"]
@@ -222,245 +225,496 @@ with st.sidebar:
 
 
 
+# Main area ###########################
+
 # Main area
-st.title("Hockey Game Shots Input")
+st.title("Hockey Game Scores Input")
+
+with st.expander("Game Scores Input", expanded=False):
+
+    st.subheader(f"Final Scores")
+    cols = st.columns(2)  # Now, cols[0], cols[1], and cols[2] are valid
+
+    with cols[0]:
+        user_input = st.text_input("Stevenson Final Score", key=f"Score_Stevenson")
+
+        # Initialize win_count as None
+        Score_Stevenson = 0
+
+        # Validate if the input is a number
+        if user_input:
+            if user_input.isdigit():
+                Score_Stevenson = int(user_input)  # Convert the input to an integer and store in win_count
+            else:
+                st.error("Please enter only numbers.")
+                
+    with cols[1]:
+        user_input = st.text_input(f"{opponent} Final Score", key=f"Score_Opponent")
+
+        # Initialize win_count as None
+        Score_Opponent = 0
+
+        # Validate if the input is a number
+        if user_input:
+            if user_input.isdigit():
+                Score_Opponent = int(user_input)  # Convert the input to an integer and store in win_count
+            else:
+                st.error("Please enter only numbers.")        
         
+        
+    if Score_Stevenson > Score_Opponent:
+        Game_Win = "Yes"
+    elif Score_Stevenson < Score_Opponent:
+        Game_Win = "No"
+    else:
+        Game_Win = "Tie"        
+        
+   
+        
+        
+    st.subheader(f"Player Scores")
+    # Add a radio button for selecting the period, displayed horizontally
+    period_game = st.radio("Select Period", options=["1", "2", "3", "Overtime"], horizontal=True, key="period_game")
+    stevenson_game = st.slider(f"Scores by Stevenson in Period {period_game}", min_value=0, max_value=10, value=0)
 
-# Add a radio button for selecting the period, displayed horizontally
-period = st.radio("Select Period", options=["1", "2", "3", "Overtime"], horizontal=True)
+    if stevenson_game > 0:
+        st.subheader(f"Stevenson Scores Details for Period {period_game}")
+        for i in range(stevenson_game):
+            # Define 3 columns, with equal or customizable widths
+            cols = st.columns(3)  # Now, cols[0], cols[1], and cols[2] are valid
 
-
-# Create two sections: Stevenson Team and Opponent Team, with a vertical line in between
-col1, col_mid, col2 = st.columns([10, 1, 10])  # Adjust column width ratios as needed
-
-
-# Stevenson Team Section
-with col1:
-    st.header(f"Stevenson Team - Period {period}")
-    stevenson_shots = st.slider(f"Number of Shots by Stevenson in Period {period}", min_value=0, max_value=30, value=0)
-    
-    if stevenson_shots > 0:
-        st.subheader(f"Stevenson Shots Details for Period {period}")
-        for i in range(stevenson_shots):
-            cols = st.columns([2, 2])  # Define column widths
             with cols[0]:
-                shoot_zone = st.selectbox(f"Shoot Zone (Shot {i+1})", 
-                                          ["1 - Inner Slot", "2 - West Outer Slot", "3 - East Outer Slot", "4 - Outside North West", "5 - Outside North East", "6 - West Point", "7 - Center Point","8 - East Point"], 
-                                          key=f"stevenson_shoot_zone_{i}")
+                score_jersey_number = st.selectbox(f"Jersey Number (score {i+1})", unique_jersey_numbers, key=f"score_jersey_{i}")
+
             with cols[1]:
-                jersey_number = st.selectbox(f"Jersey Number (Shot {i+1})", unique_jersey_numbers, key=f"stevenson_jersey_{i}")
+                assistant_1_jersey = st.selectbox("Assistant_1", unique_jersey_numbers, key=f"Assistant_1_{i}")
+
+            with cols[2]:
+                assistant_2_jersey = st.selectbox("Assistant_2", unique_jersey_numbers, key=f"Assistant_2_{i}")
+
                 
+            if assistant_1_jersey == 0:
+                assistant_1_jersey = None
                 
-            data_to_save.append({
+            if assistant_2_jersey == 0:
+                assistant_2_jersey = None
+                
+
+            # Append the data to data_to_save
+            scores_to_s3.append({  
                 "GameDate": game_date.strftime('%Y-%m-%d'),
                 "Team": selected_team,
                 "Opponent": opponent,
-                "Period": period,
-                #"IsPowerplay": powerplay_status,   
-                "JerseyNumber": jersey_number,               
-                "ShootingTeam": "Stevenson",
-                "ShootZone": shoot_zone,
-                #"IsGoal": goal_status
+                "Home": stevenson_home, #Yes, No
+                "Win": Game_Win, #Yes, No, Tie
+                "ScoreStevenson":Score_Stevenson,
+                "ScoreOpponent":Score_Opponent,
+                "Period": period_game, 
+                "Goal": score_jersey_number,               
+                "Assistant_1": assistant_1_jersey,
+                "Assistant_2": assistant_2_jersey
             })
-
             
-            
-# Vertical line separator
-with col_mid:
-    st.markdown("##")
-    st.markdown(".")
-
-            
-            
-# Opponent Team Section
-with col2:
-    st.header(f"Opponent Team - Period {period}")
-    opponent_shots = st.slider(f"Number of Shots by Opponent in Period {period}", min_value=0, max_value=30, value=0)
+    st.markdown("<hr>", unsafe_allow_html=True)
     
-    if opponent_shots > 0:
-        st.subheader(f"Opponent Shots Details for Period {period}")
-        for i in range(opponent_shots):
-            #cols = st.columns([2, 2, 1, 1])  # Define column widths
-            cols = st.columns([2, 2])  # Define column widths
-            with cols[0]:
-                shoot_zone = st.selectbox(f"Shoot Zone (Shot {i+1})", 
-                                          ["1 - Inner Slot", "2 - West Outer Slot", "3 - East Outer Slot", "4 - Outside North West", "5 - Outside North East", "6 - West Point", "7 - Center Point","8 - East Point"], 
-                                          key=f"opponent_shoot_zone_{i}")
-            with cols[1]:
-                jersey_number = st.text_input(f"Jersey Number (Shot {i+1})", value="0", key=f"opponent_jersey_{i}")
-            #with cols[2]:
-                #is_powerplay = st.checkbox(f"Is Powerplay (Shot {i+1})", value=False, key=f"opponent_powerplay_{i}")
-            #with cols[3]:
-                #is_goal = st.checkbox(f"Is Goal (Shot {i+1})", value=False, key=f"opponent_goal_{i}")
-                
-            # Convert boolean values to 'Yes' or 'No'
-            #powerplay_status = 'Yes' if is_powerplay else 'No'
-            #goal_status = 'Yes' if is_goal else 'No'    
-                
-                
-            data_to_save.append({
-                "GameDate": game_date.strftime('%Y-%m-%d'),
-                "Team": selected_team,
-                "Opponent": opponent,
-                "Period": period,        
-                #"IsPowerplay": powerplay_status,
-                "JerseyNumber": jersey_number,                
-                "ShootingTeam": opponent,
-                "ShootZone": shoot_zone,
-                #"IsGoal": goal_status
-            })
+    # Add a "SAVE" button to save the data
+    if st.button("Save Scores"):
+        if not scores_to_s3:
+            st.warning("No score data to save. Please add data before saving.")
+        else:
+                # Check if data_to_save is not empty, and write it to storage (or process it)
+                if scores_to_s3:
+                    try:
+                        # Call the function to append data and upload back to S3
+                        append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, scores_to_s3, "Scoring")
 
-# Add a horizontal line
+
+                        # Assuming df is currently a list
+                        if isinstance(scores_to_s3, list):
+                            # Case 1: List of lists
+                            if all(isinstance(i, list) for i in scores_to_s3):
+                                # Convert list of lists into DataFrame
+                                scores_to_s3 = pd.DataFrame(scores_to_s3, columns=['GameDate', 'Team', 'Opponent','Period','JerseyNumber','Assistant_1','Assistant_2'])  # Adjust column names as needed
+
+                            # Case 2: List of dictionaries
+                            elif all(isinstance(i, dict) for i in scores_to_s3):
+                                # Convert list of dictionaries into DataFrame
+                                scores_to_s3 = pd.DataFrame(scores_to_s3)
+
+
+                        #write backup file:
+                        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                        file_name = f"temp/scores_{selected_team}_{current_time}.csv"
+
+                        # Convert DataFrame to CSV in memory
+                        csv_buffer = BytesIO()
+                        scores_to_s3.to_csv(csv_buffer, index=False)
+
+                        csv_buffer.seek(0)
+
+                        # Upload the CSV file to S3
+                        s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
+
+
+
+                        # Display success message
+                        st.success("Score data successfully uploaded!")
+
+                    except Exception as e:
+                        # Display error message if something goes wrong
+                        st.error(f"An error occurred while uploading the sscore data: {e}")                              
+            
+            
+            
+
+st.markdown("<hr>", unsafe_allow_html=True) 
+
+
+
+
+# Expander for "Hockey Game Shots Input"
+st.title("Hockey Game Shots Input")
+
+with st.expander("Game Shots Input", expanded=False):
+    #st.title("Hockey Game Shots Input")
+            
+    # Add a radio button for selecting the period, displayed horizontally
+    period = st.radio("Select Period", options=["1", "2", "3", "Overtime"], horizontal=True)
+    
+    # Create two sections: Stevenson Team and Opponent Team, with a vertical line in between
+    col1, col_mid, col2 = st.columns([10, 1, 10])  # Adjust column width ratios as needed
+    
+    # Stevenson Team Section
+    with col1:
+        st.header(f"Stevenson Team - Period {period}")
+        stevenson_shots = st.slider(f"Number of Shots by Stevenson in Period {period}", min_value=0, max_value=30, value=0)
+        
+        if stevenson_shots > 0:
+            st.subheader(f"Stevenson Shots Details for Period {period}")
+            for i in range(stevenson_shots):
+                cols = st.columns([2, 2])  # Define column widths
+                with cols[0]:
+                    shoot_zone = st.selectbox(f"Shoot Zone (Shot {i+1})", 
+                                              ["1 - Inner Slot", "2 - West Outer Slot", "3 - East Outer Slot", "4 - Outside North West", "5 - Outside North East", "6 - West Point", "7 - Center Point","8 - East Point"], 
+                                              key=f"stevenson_shoot_zone_{i}")
+                with cols[1]:
+                    jersey_number = st.selectbox(f"Jersey Number (Shot {i+1})", unique_jersey_numbers, key=f"stevenson_jersey_{i}")
+                    
+                data_to_save.append({
+                    "GameDate": game_date.strftime('%Y-%m-%d'),
+                    "Team": selected_team,
+                    "Opponent": opponent,
+                    "Period": period,
+                    "JerseyNumber": jersey_number,               
+                    "ShootingTeam": "Stevenson",
+                    "ShootZone": shoot_zone
+                })
+    
+    # Vertical line separator
+    with col_mid:
+        st.markdown("##")
+        st.markdown(".")
+                
+    # Opponent Team Section
+    with col2:
+        st.header(f"Opponent Team - Period {period}")
+        opponent_shots = st.slider(f"Number of Shots by Opponent in Period {period}", min_value=0, max_value=30, value=0)
+        
+        if opponent_shots > 0:
+            st.subheader(f"Opponent Shots Details for Period {period}")
+            for i in range(opponent_shots):
+                cols = st.columns([2, 2])  # Define column widths
+                with cols[0]:
+                    shoot_zone = st.selectbox(f"Shoot Zone (Shot {i+1})", 
+                                              ["1 - Inner Slot", "2 - West Outer Slot", "3 - East Outer Slot", "4 - Outside North West", "5 - Outside North East", "6 - West Point", "7 - Center Point","8 - East Point"], 
+                                              key=f"opponent_shoot_zone_{i}")
+                with cols[1]:
+                    jersey_number = st.text_input(f"Jersey Number (Shot {i+1})", value="0", key=f"opponent_jersey_{i}")
+                    
+                data_to_save.append({
+                    "GameDate": game_date.strftime('%Y-%m-%d'),
+                    "Team": selected_team,
+                    "Opponent": opponent,
+                    "Period": period,        
+                    "JerseyNumber": jersey_number,                
+                    "ShootingTeam": opponent,
+                    "ShootZone": shoot_zone
+                })
+                
+    st.markdown("<hr>", unsafe_allow_html=True)                
+                
+    # Add a "SAVE" button to save the data
+    if st.button("Save Shots"):
+        if not data_to_save:
+            st.warning("No data to save. Please add data before saving.")
+        else:
+                # Check if data_to_save is not empty, and write it to storage (or process it)
+                if data_to_save:
+                    try:
+                        # Call the function to append data and upload back to S3
+                        append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, data_to_save, "Shots")
+
+
+                        # Assuming df is currently a list
+                        if isinstance(data_to_save, list):
+                            # Case 1: List of lists
+                            if all(isinstance(i, list) for i in data_to_save):
+                                # Convert list of lists into DataFrame
+                                data_to_save = pd.DataFrame(data_to_save, columns=['GameDate', 'Team', 'Opponent','Period','JerseyNumber','ShootingTeam','ShootZone'])  # Adjust column names as needed
+
+                            # Case 2: List of dictionaries
+                            elif all(isinstance(i, dict) for i in data_to_save):
+                                # Convert list of dictionaries into DataFrame
+                                data_to_save = pd.DataFrame(data_to_save)
+
+
+                        #write backup file:
+                        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                        file_name = f"temp/shots_{selected_team}_{current_time}.csv"
+
+                        # Convert DataFrame to CSV in memory
+                        csv_buffer = BytesIO()
+                        data_to_save.to_csv(csv_buffer, index=False)
+
+                        csv_buffer.seek(0)
+
+                        # Upload the CSV file to S3
+                        s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
+
+
+
+                        # Display success message
+                        st.success("Shots data successfully uploaded!")
+
+                    except Exception as e:
+                        # Display error message if something goes wrong
+                        st.error(f"An error occurred while uploading the shots data: {e}")                
+
+
+
 st.markdown("<hr>", unsafe_allow_html=True)  
 
 
+
+
+
+
+# Expander for "Hockey Game Faceoff Input"
 st.title("Hockey Game Faceoff Input")
 
-# Add a radio button for selecting the period, displayed horizontally
-period_faceoff = st.radio("Select Period", options=["1", "2", "3", "Overtime"], horizontal=True, key="period_faceoff")
-stevenson_faceoff = st.slider(f"Number of faceoff by Stevenson in Period {period_faceoff}", min_value=0, max_value=30, value=0)
+with st.expander("Game Faceoff Input", expanded=False):
+    #st.title("Hockey Game Faceoff Input")
+    
+    # Add a radio button for selecting the period, displayed horizontally
+    period_faceoff = st.radio("Select Period", options=["1", "2", "3", "Overtime"], horizontal=True, key="period_faceoff")
+    stevenson_faceoff = st.slider(f"Number of faceoff by Stevenson in Period {period_faceoff}", min_value=0, max_value=30, value=0)
+    
+    if stevenson_faceoff > 0:
+        st.subheader(f"Stevenson Faceoff Details for Period {period_faceoff}")
+        for i in range(stevenson_faceoff):
+            # Define 3 columns, with equal or customizable widths
+            cols = st.columns(3)  # Now, cols[0], cols[1], and cols[2] are valid
+            
+            with cols[0]:
+                jersey_number = st.selectbox(f"Jersey Number (faceoff {i+1})", unique_jersey_numbers, key=f"faceoff_jersey_{i}")
+            
+            with cols[1]:
+                user_input = st.text_input("Enter win count", key=f"numeric_input_{i}")
 
-if stevenson_faceoff > 0:
-    st.subheader(f"Stevenson Faceoff Details for Period {period_faceoff}")
-    for i in range(stevenson_faceoff):
-        # Define 3 columns, with equal or customizable widths
-        cols = st.columns(3)  # Now, cols[0], cols[1], and cols[2] are valid
-        
-        with cols[0]:
-            jersey_number = st.selectbox(f"Jersey Number (faceoff {i+1})", unique_jersey_numbers, key=f"faceoff_jersey_{i}")
-        
-        with cols[1]:
-            user_input = st.text_input("Enter win count", key=f"numeric_input_{i}")
+                # Initialize win_count as None
+                win_count = None
 
-            # Initialize win_count as None
-            win_count = None
+                # Validate if the input is a number
+                if user_input:
+                    if user_input.isdigit():
+                        win_count = int(user_input)  # Convert the input to an integer and store in win_count
+                    else:
+                        st.error("Please enter only numbers.")
+            
+            with cols[2]:
+                lose_input = st.text_input("Enter lose count", key=f"numeric_lose_input_{i}")
 
-            # Validate if the input is a number
-            if user_input:
-                if user_input.isdigit():
-                    win_count = int(user_input)  # Convert the input to an integer and store in win_count
-                else:
-                    st.error("Please enter only numbers.")
-        
-        with cols[2]:
-            lose_input = st.text_input("Enter lose count", key=f"numeric_lose_input_{i}")
+                # Initialize lose_count as None
+                lose_count = None
 
-            # Initialize lose_count as None
-            lose_count = None
+                # Validate if the input is a number
+                if lose_input:
+                    if lose_input.isdigit():
+                        lose_count = int(lose_input)  # Convert the input to an integer and store in lose_count
+                    else:
+                        st.error("Please enter only numbers.")
 
-            # Validate if the input is a number
-            if lose_input:
-                if lose_input.isdigit():
-                    lose_count = int(lose_input)  # Convert the input to an integer and store in lose_count
-                else:
-                    st.error("Please enter only numbers.")
+            # Append the data to data_to_save
+            faceoff_to_s3.append({  
+                "GameDate": game_date.strftime('%Y-%m-%d'),
+                "Team": selected_team,
+                "Opponent": opponent,
+                "Period": period_faceoff, 
+                "JerseyNumber": jersey_number,               
+                "Win": win_count,
+                "Lose": lose_count
+            })
 
-        # Append the data to data_to_save
-        faceoff_to_s3.append({  
-            "GameDate": game_date.strftime('%Y-%m-%d'),
-            "Team": selected_team,
-            "Opponent": opponent,
-            "Period": period_faceoff, 
-            "JerseyNumber": jersey_number,               
-            "Win": win_count,
-            "Lose": lose_count
+
+    st.markdown("<hr>", unsafe_allow_html=True)            
+            
+            
+    # Add a "SAVE" button to save the data
+    if st.button("Save Faceoff"):
+        if not faceoff_to_s3:
+            st.warning("No data to save. Please add data before saving.")
+        else:
+
+                # Check if faceoff_to_s3 is not empty, and write it to storage (or process it)
+                if faceoff_to_s3:
+                    try:
+                        # Call the function to append data and upload back to S3
+                        append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, faceoff_to_s3, "Faceoff")
+
+
+                        # Assuming df is currently a list
+                        if isinstance(faceoff_to_s3, list):
+                            # Case 1: List of lists
+                            if all(isinstance(i, list) for i in faceoff_to_s3):
+                                # Convert list of lists into DataFrame
+                                faceoff_to_s3 = pd.DataFrame(faceoff_to_s3, columns=['GameDate', 'Team', 'Opponent','Period','JerseyNumber','Win','Lose'])  # Adjust column names as needed
+
+                            # Case 2: List of dictionaries
+                            elif all(isinstance(i, dict) for i in faceoff_to_s3):
+                                # Convert list of dictionaries into DataFrame
+                                faceoff_to_s3 = pd.DataFrame(faceoff_to_s3)
+
+
+                        #write backup file:
+                        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                        file_name = f"temp/faceoff_{selected_team}_{current_time}.csv"
+
+                        # Convert DataFrame to CSV in memory
+                        csv_buffer = BytesIO()
+                        faceoff_to_s3.to_csv(csv_buffer, index=False)
+
+                        csv_buffer.seek(0)
+
+                        # Upload the CSV file to S3
+                        s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
+
+
+
+                        # Display success message
+                        st.success("Faceoff data successfully uploaded!")
+
+                    except Exception as e:
+                        # Display error message if something goes wrong
+                        st.error(f"An error occurred while uploading the faceoff data: {e}")                
+ 
+
+    
+st.markdown("<hr>", unsafe_allow_html=True)      
+    
+    
+    
+# Expander for "Hockey Game Faceoff Input"
+st.title("Hockey Game Goalie Data Input")
+
+with st.expander("Goalie Data Input", expanded=False):
+    #st.title("Hockey Game Faceoff Input")
+    
+    #goalie_jersey_numbers = unique_jersey_numbers
+    
+    #st.dataframe(unique_jersey_numbers, width=650)
+    #st.dataframe(df_selected_team, width=650)    
+    
+    goalie_jersey_numbers = df_selected_team[df_selected_team['Position'] == 'Goalie']['JerseyNumber'].tolist()    
+    
+    
+    cols = st.columns(3)  # Now, cols[0], cols[1], and cols[2] are valid
+            
+    with cols[0]:
+        jersey_number = st.selectbox(f"Goalie Jersey Number", goalie_jersey_numbers, key=f"goalie_jersey")
+            
+    with cols[1]:
+        user_input = st.text_input(f"{opponent} scores", key=f"opponentc_scores")
+
+        # Initialize win_count as None
+        opponentc_scores = 0
+
+        # Validate if the input is a number
+        if user_input:
+            if user_input.isdigit():
+                opponentc_scores = int(user_input)  # Convert the input to an integer and store in win_count
+            else:
+                st.error("Please enter only numbers.")
+            
+    with cols[2]:
+        user_input = st.text_input(f"{opponent} shots", key=f"opponentc_shots")
+
+        # Initialize win_count as None
+        opponentc_shots = None
+
+        # Validate if the input is a number
+        if user_input:
+            if user_input.isdigit():
+                opponentc_shots = int(user_input)  # Convert the input to an integer and store in win_count
+            else:
+                st.error("Please enter only numbers.")
+
+    # Append the data to data_to_save
+    goalie_to_s3.append({  
+                "GameDate": game_date.strftime('%Y-%m-%d'),
+                "Team": selected_team,
+                "Opponent": opponent,
+                "JerseyNumber": jersey_number,               
+                "Opponent_Score": opponentc_scores,
+                "Opponent_Shots": opponentc_shots
         })
 
+    st.markdown("<hr>", unsafe_allow_html=True)
+    
+    # Add a "SAVE" button to save the data
+    if st.button("Save Goalie"):
+        if not goalie_to_s3:
+            st.warning("No data to save. Please add data before saving.")
+        else:
+
+                # Check if faceoff_to_s3 is not empty, and write it to storage (or process it)
+                if goalie_to_s3:
+                    try:
+                        # Call the function to append data and upload back to S3
+                        append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, goalie_to_s3, "Golie")
 
 
-st.markdown("<hr>", unsafe_allow_html=True)  
+                        # Assuming df is currently a list
+                        if isinstance(goalie_to_s3, list):
+                            # Case 1: List of lists
+                            if all(isinstance(i, list) for i in goalie_to_s3):
+                                # Convert list of lists into DataFrame
+                                goalie_to_s3 = pd.DataFrame(goalie_to_s3, columns=['GameDate', 'Team', 'Opponent','JerseyNumber','Opponent_Score','Opponent_Shots'])  # Adjust column names as needed
+
+                            # Case 2: List of dictionaries
+                            elif all(isinstance(i, dict) for i in goalie_to_s3):
+                                # Convert list of dictionaries into DataFrame
+                                goalie_to_s3 = pd.DataFrame(goalie_to_s3)
 
 
+                        #write backup file:
+                        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                        file_name = f"temp/goalie_{selected_team}_{current_time}.csv"
 
-            
-# Add a "SAVE" button to save the data
-if st.button("SAVE"):
-    if not data_to_save and not faceoff_to_s3:
-        st.warning("No data to save. Please add data before saving.")
-    else:
-            # Check if data_to_save is not empty, and write it to storage (or process it)
-            if data_to_save:
-                try:
-                    # Call the function to append data and upload back to S3
-                    append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, data_to_save, "Shots")
+                        # Convert DataFrame to CSV in memory
+                        csv_buffer = BytesIO()
+                        goalie_to_s3.to_csv(csv_buffer, index=False)
 
+                        csv_buffer.seek(0)
 
-                    # Assuming df is currently a list
-                    if isinstance(data_to_save, list):
-                        # Case 1: List of lists
-                        if all(isinstance(i, list) for i in data_to_save):
-                            # Convert list of lists into DataFrame
-                            data_to_save = pd.DataFrame(data_to_save, columns=['GameDate', 'Team', 'Opponent','Period','JerseyNumber','ShootingTeam','ShootZone'])  # Adjust column names as needed
-
-                        # Case 2: List of dictionaries
-                        elif all(isinstance(i, dict) for i in data_to_save):
-                            # Convert list of dictionaries into DataFrame
-                            data_to_save = pd.DataFrame(data_to_save)
-
-
-                    #write backup file:
-                    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                    file_name = f"temp/shots_{selected_team}_{current_time}.csv"
-
-                    # Convert DataFrame to CSV in memory
-                    csv_buffer = BytesIO()
-                    data_to_save.to_csv(csv_buffer, index=False)
-
-                    csv_buffer.seek(0)
-
-                    # Upload the CSV file to S3
-                    s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
+                        # Upload the CSV file to S3
+                        s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
 
 
 
-                    # Display success message
-                    st.success("Shots data successfully uploaded!")
+                        # Display success message
+                        st.success("Goalie data successfully uploaded!")
 
-                except Exception as e:
-                    # Display error message if something goes wrong
-                    st.error(f"An error occurred while uploading the shots data: {e}")                
-
-
-                    
-            # Check if faceoff_to_s3 is not empty, and write it to storage (or process it)
-            if faceoff_to_s3:
-                try:
-                    # Call the function to append data and upload back to S3
-                    append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, faceoff_to_s3, "Faceoff")
-
-
-                    # Assuming df is currently a list
-                    if isinstance(faceoff_to_s3, list):
-                        # Case 1: List of lists
-                        if all(isinstance(i, list) for i in faceoff_to_s3):
-                            # Convert list of lists into DataFrame
-                            faceoff_to_s3 = pd.DataFrame(faceoff_to_s3, columns=['GameDate', 'Team', 'Opponent','Period','JerseyNumber','Win','Lose'])  # Adjust column names as needed
-
-                        # Case 2: List of dictionaries
-                        elif all(isinstance(i, dict) for i in faceoff_to_s3):
-                            # Convert list of dictionaries into DataFrame
-                            faceoff_to_s3 = pd.DataFrame(faceoff_to_s3)
-
-
-                    #write backup file:
-                    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                    file_name = f"temp/faceoff_{selected_team}_{current_time}.csv"
-
-                    # Convert DataFrame to CSV in memory
-                    csv_buffer = BytesIO()
-                    faceoff_to_s3.to_csv(csv_buffer, index=False)
-
-                    csv_buffer.seek(0)
-
-                    # Upload the CSV file to S3
-                    s3.put_object(Bucket=S3_BUCKET, Key=file_name, Body=csv_buffer.getvalue())
-
-
-
-                    # Display success message
-                    st.success("Faceoff data successfully uploaded!")
-
-                except Exception as e:
-                    # Display error message if something goes wrong
-                    st.error(f"An error occurred while uploading the faceoff data: {e}")                
+                    except Exception as e:
+                        # Display error message if something goes wrong
+                        st.error(f"An error occurred while uploading the goalie data: {e}")                
  
