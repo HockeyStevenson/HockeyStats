@@ -680,7 +680,7 @@ with st.expander("Goalie Data Input", expanded=False):
                 if goalie_to_s3:
                     try:
                         # Call the function to append data and upload back to S3
-                        append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, goalie_to_s3, "Golie")
+                        append_to_excel_s3(S3_BUCKET, EXCEL_FILE_KEY, goalie_to_s3, "Goalie")
 
 
                         # Assuming df is currently a list
