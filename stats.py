@@ -513,8 +513,8 @@ if view_by == "Team":
                 
                 
                 #st.dataframe(final_shots_df)
-                st.write(team_shooting.columns)
-                st.dataframe(team_shooting)
+                #st.write(team_shooting.columns)
+                #st.dataframe(team_shooting)
                 #st.dataframe(team_scoring)
         
         
