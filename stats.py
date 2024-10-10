@@ -688,7 +688,18 @@ if view_by == "Team":
                 
                 
                 #st.dataframe(team_shooting.set_index('JerseyNumber'))
-                
+
+                if selected_opponent != "All":
+                        team_outcomes = temp_team_shooting[temp_team_shooting['Opponent'] == selected_opponent]
+                        team_scoring = final_shots_df[(final_shots_df['Team'] == selected_team) & (final_shots_df['Opponent'] == selected_opponent)]
+                        team_shooting = final_shots_df[(final_shots_df['Team'] == selected_team) & (final_shots_df['Opponent'] == selected_opponent)]
+
+
+                else:
+                        team_outcomes = temp_team_shooting   
+                        team_scoring = final_scoring_df[final_scoring_df['Team'] == selected_team]
+                        team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]                      
+            
                 
                 # Group by jersey number and name, then count scores
                 shots_counts = team_shooting.groupby(['JerseyNumber', 'Team','FirstName','LastName','Position']).size().reset_index(name='TotalShots')
