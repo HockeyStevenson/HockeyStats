@@ -21,8 +21,12 @@ from openpyxl import load_workbook
 #st.set_option('deprecation.showPyplotGlobalUse', False)
 # Use the Access Key and Secret Key you just created
 
+##################### PRODUCTION ############################
+
 AWS_ACCESS_KEY = st.secrets["aws"]["AWS_ACCESS_KEY"]
 AWS_SECRET_KEY = st.secrets["aws"]["AWS_SECRET_KEY"]
+
+##################### PRODUCTION ############################
 
 S3_BUCKET = 'stevensonhockeydata'
 EXCEL_FILE_KEY = 'Stevenson_Hockey.xlsx' 
@@ -492,233 +496,128 @@ if view_by == "Team":
                 st.dataframe(ranked_players.set_index('JerseyNumber'), width=650)
 
 
-            
-            
-            
-    
+
+                
+    # Assuming final_shots_df and final_scoring_df are your main DataFrames and the necessary libraries are already imported
+
     if metric == "Shots":   
         temp_team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]
 
-
+        # Filter for selected opponent or include all if "All" is selected
         if selected_opponent != "All":
-                team_outcomes = temp_team_shooting[temp_team_shooting['Opponent'] == selected_opponent]
-                team_scoring = final_shots_df[(final_shots_df['Team'] == selected_team) & (final_shots_df['Opponent'] == selected_opponent)]
-                team_shooting = final_shots_df[(final_shots_df['Team'] == selected_team) & (final_shots_df['Opponent'] == selected_opponent)]
-
-                
+            team_shooting = temp_team_shooting[temp_team_shooting['Opponent'] == selected_opponent]
+            team_scoring = final_scoring_df[(final_scoring_df['Team'] == selected_team) & (final_scoring_df['Opponent'] == selected_opponent)]
         else:
-                team_outcomes = temp_team_shooting   
-                team_scoring = final_scoring_df[final_scoring_df['Team'] == selected_team]
-                team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]    
-                
-                
-                #st.dataframe(final_shots_df)
-                #st.write(team_shooting.columns)
-                #st.dataframe(team_shooting)
-                #st.dataframe(team_scoring)
-        
-        
-        
+            team_shooting = temp_team_shooting
+            team_scoring = final_scoring_df[final_scoring_df['Team'] == selected_team]    
+
+        # Check for empty DataFrame early
         if team_shooting.empty:
-                st.subheader(f"No Shots Data for {selected_team}")
+            st.subheader(f"No Shots Data for {selected_team}")
         else:
+            # --- First Chart: Total Shots by Game ---
+            # Aggregate shooting data by game for Stevenson and Opponents using team_shooting
+            shooting_summary_team = team_shooting[team_shooting['ShootingTeam'] == 'Stevenson'].groupby(['GameDate', 'Team', 'Opponent']).size().reset_index(name='TotalStevensonShots')
+            shooting_summary_opponent = team_shooting[team_shooting['ShootingTeam'] != 'Stevenson'].groupby(['GameDate', 'Opponent']).size().reset_index(name='TotalOpponentShots')
 
+            # Merge the scoring and shooting data
+            game_summary = pd.merge(
+                team_scoring[['GameDate', 'Team', 'Opponent']].drop_duplicates(),
+                shooting_summary_team[['GameDate', 'TotalStevensonShots']],
+                on='GameDate',
+                how='left'
+            )
+            game_summary = pd.merge(
+                game_summary,
+                shooting_summary_opponent[['GameDate', 'TotalOpponentShots']],
+                on='GameDate',
+                how='left'
+            )
 
-                # Filter the data for the selected team
-                #team_scoring = final_scoring_df[final_scoring_df['Team'] == selected_team]
-                #team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]
-                
-                #st.dataframe(team_shooting)
-                
-                 # Aggregate shooting data by game for Stevenson
-                shooting_summary_team = team_shooting[team_shooting['ShootingTeam'] == 'Stevenson'].groupby(['GameDate', 'Team', 'Opponent']).size().reset_index(name='TotalStevensonShots')
+            # Fill NaN values with 0 for games without shooting data
+            game_summary['TotalShots'] = game_summary['TotalStevensonShots'].fillna(0)
+            game_summary['TotalOpponentShots'] = game_summary['TotalOpponentShots'].fillna(0)
 
-                # Aggregate shooting data by game for Opponents
-                # Assuming 'final_shots_df' should be 'team_shooting', as 'final_shots_df' is not previously defined
-                shooting_summary_opponent = team_shooting[team_shooting['ShootingTeam'] != 'Stevenson'].groupby(['GameDate', 'Opponent']).size().reset_index(name='TotalOpponentShots')
-               
-                       
-                
-                #st.dataframe(shooting_summary_team)
-                #st.dataframe(shooting_summary_opponent)
-                
-                # Merge the scoring and shooting data for Stevenson and Opponent
-                game_summary = pd.merge(
-                    team_scoring[['GameDate', 'Team', 'Opponent']].drop_duplicates(),
-                    shooting_summary_team[['GameDate', 'TotalStevensonShots']],
-                    on='GameDate',
-                    how='left'
+            # Sort by GameDate for better readability
+            game_summary = game_summary.sort_values(by='GameDate')
+
+            # Plotting the bar chart
+            fig1 = go.Figure(data=[
+                go.Bar(
+                    name='Stevenson',
+                    x=game_summary['GameDate'],
+                    y=game_summary['TotalStevensonShots'],
+                    marker_color='rgb(41,77,46)',
+                    hovertext=['Stevenson' for _ in range(len(game_summary))],
+                    hoverinfo='text+y'
+                ),
+                go.Bar(
+                    name='Opponent',
+                    x=game_summary['GameDate'],
+                    y=game_summary['TotalOpponentShots'],
+                    hovertext=game_summary['Opponent'],
+                    hoverinfo='text+y'
                 )
+            ])
 
-                game_summary = pd.merge(
-                    game_summary,
-                    shooting_summary_opponent[['GameDate', 'TotalOpponentShots']],
-                    on='GameDate',
-                    how='left'
-                )
+            fig1.update_layout(barmode='group', title="Shots by Stevenson and Opponent by Game", xaxis_title="Game Date", yaxis_title="Total Shots", xaxis={'type': 'category'})
+            st.plotly_chart(fig1, use_container_width=True)
 
-                # Fill NaN values with 0 for games without shooting data
-                game_summary['TotalShots'] = game_summary['TotalStevensonShots'].fillna(0)
-                game_summary['TotalOpponentShots'] = game_summary['TotalOpponentShots'].fillna(0)
+            # --- Second Chart: Total Shots by Shooting Position ---
 
-                # Sort by GameDate for better readability
-                game_summary = game_summary.sort_values(by='GameDate')
-                
-                
-                #st.dataframe(game_summary)
+            if view_by == "Total":
+                # Aggregate only Stevenson shooting data by shooting zone
+                position_summary_team = team_shooting[team_shooting['ShootingTeam'] == 'Stevenson'].groupby(['ShootZone']).size().reset_index(name='TotalStevensonShots')
 
-
-                # Create the bar chart
-                fig = go.Figure(data=[
+                fig2 = go.Figure(data=[
                     go.Bar(
                         name='Stevenson',
-                        x=game_summary['GameDate'],
-                        y=game_summary['TotalStevensonShots'],
+                        x=position_summary_team['ShootZone'],
+                        y=position_summary_team['TotalStevensonShots'],
                         marker_color='rgb(41,77,46)',
-                        hovertext=['Stevenson' for _ in range(len(game_summary))],  # Show "Stevenson" on hover
-                        hoverinfo='text+y'  # Show the hovertext and y-value (shots)
-                    ),
-                    go.Bar(
-                        name='Opponent',
-                        x=game_summary['GameDate'],
-                        y=game_summary['TotalOpponentShots'],
-                        hovertext=game_summary['Opponent'],  # Show opponent team name on hover
-                        hoverinfo='text+y'  # Show the hovertext and y-value (shots)
+                        hovertext=position_summary_team['ShootZone'],
+                        hoverinfo='text+y'
                     )
                 ])
+                fig2.update_layout(barmode='group', title="Total Shots by Shooting Position for Stevenson", xaxis_title="Shooting Position", yaxis_title="Total Shots")
+                st.plotly_chart(fig2, use_container_width=True)
 
-                # Change the bar mode to group
-                fig.update_layout(barmode='group', title="Shots by Stevenson and Opponent by Game", xaxis_title="Game Date", yaxis_title="Total Shots", xaxis={'type': 'category'} )
+            else:
+                # Group Stevenson shots by game and shooting position
+                game_position_summary_team = team_shooting[team_shooting['ShootingTeam'] == 'Stevenson'].groupby(['GameDate', 'ShootZone']).size().reset_index(name='TotalStevensonShots')
 
-                # Display the bar chart
-                st.plotly_chart(fig, use_container_width=True)
+                fig2 = go.Figure()
 
+                for game_date in game_position_summary_team['GameDate'].unique():
+                    game_data_team = game_position_summary_team[game_position_summary_team['GameDate'] == game_date]
 
-                # Add a horizontal line
-                st.markdown("<hr>", unsafe_allow_html=True)
+                    fig2.add_trace(go.Bar(
+                        name=f'Stevenson - {game_date}',
+                        x=game_data_team['ShootZone'],
+                        y=game_data_team['TotalStevensonShots'],
+                        hovertext=game_data_team['GameDate'],
+                        hoverinfo='text+y',
+                        marker_color='rgb(41,77,46)'
+                    ))
 
-
-
-                # Filter the data for the selected team and opponents
-                team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]
-                opponent_shooting = final_shots_df[final_shots_df['Opponent'] == selected_team]
-
-                # Dropdown menu for selecting the view type
-                view_type = st.selectbox("View by", ["Total", "By Game"])
-
-                if view_type == "Total":
-                    
-                    # Aggregate shooting data by game for Stevenson
-                    position_summary_team = team_shooting[team_shooting['ShootingTeam'] == 'Stevenson'].groupby([ 'Team','ShootZone']).size().reset_index(name='TotalStevensonShots')
-
-                    # Aggregate shooting data by game for Opponents
-                    # Assuming 'final_shots_df' should be 'team_shooting', as 'final_shots_df' is not previously defined
-                    position_summary_opponent = team_shooting[team_shooting['ShootingTeam'] != 'Stevenson'].groupby(['ShootZone']).size().reset_index(name='TotalOpponentShots')
-                    
-                    #st.dataframe(position_summary_team)
-                    #st.dataframe(position_summary_opponent)
-                    
-
-                    # Create the bar chart
-                    fig = go.Figure(data=[
-                        go.Bar(
-                            name='Stevenson',
-                            x=position_summary_team['ShootZone'],
-                            y=position_summary_team['TotalStevensonShots'],
-                            marker_color='rgb(41,77,46)',
-                            hovertext=position_summary_team['ShootZone'],  # Show shooting position on hover
-                            hoverinfo='text+y'  # Show the hovertext and y-value (total shots)
-                        ),
-                        go.Bar(
-                            name='Opponent',
-                            x=position_summary_opponent['ShootZone'],
-                            y=position_summary_opponent['TotalOpponentShots'],
-                            hovertext=position_summary_opponent['ShootZone'],  # Show shooting position on hover
-                            hoverinfo='text+y',  # Show the hovertext and y-value (total shots)
-                            marker_color='rgb(204,36,29)'  # A different color for the opponent
-                        )
-                    ])
-
-                    fig.update_layout(barmode='group', title="Total Shots by Shooting Position for Stevenson and Opponent", xaxis_title="Shooting Position", yaxis_title="Total Shots")
-
-                else:
-                    game_position_summary_team = team_shooting[team_shooting['ShootingTeam'] == 'Stevenson'].groupby(['GameDate', 'Team', 'Opponent','ShootZone']).size().reset_index(name='TotalStevensonShots')
-
-                    # Aggregate shooting data by game for Opponents
-                    # Assuming 'final_shots_df' should be 'team_shooting', as 'final_shots_df' is not previously defined
-                    game_position_summary_opponent = team_shooting[team_shooting['ShootingTeam'] != 'Stevenson'].groupby(['GameDate', 'Opponent','ShootZone']).size().reset_index(name='TotalOpponentShots')
-                    
-                    #st.dataframe(game_position_summary_team)
-                    #st.dataframe(game_position_summary_opponent)                    
-                
-
-                    # Create the bar chart
-                    fig = go.Figure()
-
-                    for game_date in game_position_summary_team['GameDate'].unique():
-                        game_data_team = game_position_summary_team[game_position_summary_team['GameDate'] == game_date]
-                        game_data_opponent = game_position_summary_opponent[game_position_summary_opponent['GameDate'] == game_date]
-
-                        fig.add_trace(go.Bar(
-                            name=f'Stevenson - {game_date}',
-                            x=game_data_team['ShootZone'],
-                            y=game_data_team['TotalStevensonShots'],
-                            hovertext=game_data_team['GameDate'],  # Show shooting position on hover
-                            hoverinfo='text+y',  # Show the hovertext and y-value (shots)
-                            marker_color='rgb(41,77,46)'
-                        ))
-
-                        fig.add_trace(go.Bar(
-                            name=f'Opponent - {game_date}',
-                            x=game_data_opponent['ShootZone'],
-                            y=game_data_opponent['TotalOpponentShots'],
-                            hovertext=game_data_opponent['GameDate'],  # Show shooting position on hover
-                            hoverinfo='text+y',  # Show the hovertext and y-value (shots)
-                            marker_color='rgb(204,36,29)'  # A different color for the opponent
-                        ))
-
-                    fig.update_layout(barmode='group', title="Shots by Shooting Position and Game for Stevenson and Opponent", xaxis_title="Shooting Position", yaxis_title="Total Shots")
-
-                # Display the bar chart
-                st.plotly_chart(fig, use_container_width=True)
-
-
-                # Add a horizontal line
-                st.markdown("<hr>", unsafe_allow_html=True)
+                fig2.update_layout(barmode='group', title="Shots by Shooting Position and Game for Stevenson", xaxis_title="Shooting Position", yaxis_title="Total Shots")
+                st.plotly_chart(fig2, use_container_width=True)
                 
                 
-                #st.dataframe(team_shooting.set_index('JerseyNumber'))
-
-                if selected_opponent != "All":
-                        team_outcomes = temp_team_shooting[temp_team_shooting['Opponent'] == selected_opponent]
-                        team_scoring = final_shots_df[(final_shots_df['Team'] == selected_team) & (final_shots_df['Opponent'] == selected_opponent)]
-                        team_shooting = final_shots_df[(final_shots_df['Team'] == selected_team) & (final_shots_df['Opponent'] == selected_opponent)]
-
-
-                else:
-                        team_outcomes = temp_team_shooting   
-                        team_scoring = final_scoring_df[final_scoring_df['Team'] == selected_team]
-                        team_shooting = final_shots_df[final_shots_df['Team'] == selected_team]                      
-            
                 
-                # Group by jersey number and name, then count scores
-                shots_counts = team_shooting.groupby(['JerseyNumber', 'Team','FirstName','LastName','Position']).size().reset_index(name='TotalShots')
                 
-                # Merging player counts with roster to include player names
-                #scored_players = pd.merge(score_counts, roster_df, on='JerseyNumber', how='left')
                 
 
-                # Sort the scores in descending order
-                sorted_shots = shots_counts.sort_values(by='TotalShots', ascending=False)
-                
+            # --- Third Section: Table for Sorted Shots by Player ---
+            shots_counts = team_shooting.groupby(['JerseyNumber', 'FirstName', 'LastName', 'Position']).size().reset_index(name='TotalShots')
 
-                st.subheader("Sorted Shots by Player for Stevenson")
-                st.dataframe(sorted_shots.set_index('JerseyNumber'), width=650)
-                
-                # Add a horizontal line
-                st.markdown("<hr>", unsafe_allow_html=True)
-                
-                
+            # Sort the shots data in descending order
+            sorted_shots = shots_counts.sort_values(by='TotalShots', ascending=False)
+
+            st.subheader("Sorted Shots by Player for Stevenson")
+            st.dataframe(sorted_shots.set_index('JerseyNumber'), width=650)
+
+
                 
     
     
@@ -746,10 +645,7 @@ if view_by == "Team":
                 #team_penalties = final_penalties_df[final_penalties_df['Team'] == selected_team]
                 #opponent_penalties = final_penalties_df[final_penalties_df['Opponent'] == selected_team]
 
-                # Dropdown menu for selecting the view type
-                view_type = st.selectbox("View by", ["Total", "By Game"])
-
-                if view_type == "Total":                         
+                if view_by == "Total":                         
                     penalty_summary_team = team_penalties[team_penalties['PenaltyTeam'] == 'Stevenson'].groupby(['PenaltyCode']).size().reset_index(name='TotalStevensonPenalties')
 
                     # Aggregate shooting data by game for Opponents
