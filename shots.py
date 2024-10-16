@@ -309,6 +309,7 @@ with st.expander("Game Scores Input", expanded=False):
                 "Win": Game_Win, #Yes, No, Tie
                 "ScoreStevenson":Score_Stevenson,
                 "ScoreOpponent":Score_Opponent,
+                "ScoringTeam": 'Stevenson',
                 "Period": period_game, 
                 "Goal": score_jersey_number,               
                 "Assistant_1": assistant_1_jersey,
