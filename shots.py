@@ -273,48 +273,54 @@ with st.expander("Game Scores Input", expanded=False):
         
         
     st.subheader(f"Player Scores")
+
     # Add a radio button for selecting the period, displayed horizontally
-    period_game = st.radio("Select Period", options=["1", "2", "3", "Overtime"], horizontal=True, key="period_game")
+    period_game = st.radio("Select Period", options=["1", "2", "3", "Overtime", "Shootout"], horizontal=True, key="period_game")
     stevenson_game = st.slider(f"Scores by Stevenson in Period {period_game}", min_value=0, max_value=10, value=0)
 
     if stevenson_game > 0:
         st.subheader(f"Stevenson Scores Details for Period {period_game}")
         for i in range(stevenson_game):
-            # Define 3 columns, with equal or customizable widths
-            cols = st.columns(3)  # Now, cols[0], cols[1], and cols[2] are valid
+            # Define columns based on the period
+            if period_game == "Shootout":
+                cols = st.columns(1)  # Only one column needed for Shootout (no assistants)
+            else:
+                cols = st.columns(3)  # Three columns for periods with assistants
 
+            # Jersey Number for the goal scorer
             with cols[0]:
                 score_jersey_number = st.selectbox(f"Jersey Number (score {i+1})", unique_jersey_numbers, key=f"score_jersey_{i}")
 
-            with cols[1]:
-                assistant_1_jersey = st.selectbox("Assistant_1", unique_jersey_numbers, key=f"Assistant_1_{i}")
+            # Assistants only if not Shootout
+            assistant_1_jersey, assistant_2_jersey = None, None  # Default to None
+            if period_game != "Shootout":
+                with cols[1]:
+                    assistant_1_jersey = st.selectbox("Assistant_1", unique_jersey_numbers, key=f"Assistant_1_{i}")
+                with cols[2]:
+                    assistant_2_jersey = st.selectbox("Assistant_2", unique_jersey_numbers, key=f"Assistant_2_{i}")
 
-            with cols[2]:
-                assistant_2_jersey = st.selectbox("Assistant_2", unique_jersey_numbers, key=f"Assistant_2_{i}")
-
-                
-            if assistant_1_jersey == 0:
-                assistant_1_jersey = None
-                
-            if assistant_2_jersey == 0:
-                assistant_2_jersey = None
-                
+                # Set assistants to None if '0' is selected
+                if assistant_1_jersey == 0:
+                    assistant_1_jersey = None
+                if assistant_2_jersey == 0:
+                    assistant_2_jersey = None
 
             # Append the data to data_to_save
             scores_to_s3.append({  
                 "GameDate": game_date.strftime('%Y-%m-%d'),
                 "Team": selected_team,
                 "Opponent": opponent,
-                "Home": stevenson_home, #Yes, No
-                "Win": Game_Win, #Yes, No, Tie
-                "ScoreStevenson":Score_Stevenson,
-                "ScoreOpponent":Score_Opponent,
+                "Home": stevenson_home, # Yes, No
+                "Win": Game_Win, # Yes, No, Tie
+                "ScoreStevenson": Score_Stevenson,
+                "ScoreOpponent": Score_Opponent,
                 "ScoringTeam": 'Stevenson',
                 "Period": period_game, 
                 "Goal": score_jersey_number,               
                 "Assistant_1": assistant_1_jersey,
                 "Assistant_2": assistant_2_jersey
             })
+        
             
     st.markdown("<hr>", unsafe_allow_html=True)
     
