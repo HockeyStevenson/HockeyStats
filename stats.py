@@ -500,10 +500,6 @@ if view_by == "Team":
 
                 # Add the iframe
                 #267178 Gold, 253351 Green, 253360 White
-    
-
-                # Team selection
-                selected_team = st.selectbox("Select a Team:", ["Varsity Gold", "JV White", "Varsity Green"])
 
                 # Set iframe based on team selection
                 if selected_team == "Varsity Gold":
@@ -524,7 +520,7 @@ if view_by == "Team":
 
                 # Display the iframe
                 st.title("Gamesheet Stats")
-                st.subheader(f"Schedule for {selected_team}")
+                st.subheader(f"Scores for {selected_team}")
                 components.html(iframe_code, height=1000, width=None)
                 
                 
