@@ -496,7 +496,37 @@ if view_by == "Team":
                 st.dataframe(ranked_players.set_index('JerseyNumber'), width=650)
 
 
+                import streamlit.components.v1 as components
 
+                # Add the iframe
+                #267178 Gold, 253351 Green, 253360 White
+    
+
+                # Team selection
+                selected_team = st.selectbox("Select a Team:", ["Varsity Gold", "JV White", "Varsity Green"])
+
+                # Set iframe based on team selection
+                if selected_team == "Varsity Gold":
+                    iframe_code = """
+                    <iframe src="https://gamesheetstats.com/seasons/6757/scores?configuration[primary-colour]=c99a2d&configuration[secondary-colour]=294d2e&filter[team]=267178" 
+                    frameborder="0" style="width:100%; height:1000px;"></iframe>
+                    """
+                elif selected_team == "JV White":
+                    iframe_code = """
+                    <iframe src="https://gamesheetstats.com/seasons/6757/scores?configuration[primary-colour]=c99a2d&configuration[secondary-colour]=294d2e&filter[team]=253360" 
+                    frameborder="0" style="width:100%; height:1000px;"></iframe>
+                    """
+                elif selected_team == "Varsity Green":
+                    iframe_code = """
+                    <iframe src="https://gamesheetstats.com/seasons/6757/scores?configuration[primary-colour]=c99a2d&configuration[secondary-colour]=294d2e&filter[team]=253351" 
+                    frameborder="0" style="width:100%; height:1000px;"></iframe>
+                    """
+
+                # Display the iframe
+                st.title("Gamesheet Stats")
+                st.subheader(f"Schedule for {selected_team}")
+                components.html(iframe_code, height=1000, width=None)
+                
                 
     # Assuming final_shots_df and final_scoring_df are your main DataFrames and the necessary libraries are already imported
 
